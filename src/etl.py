@@ -2,45 +2,50 @@ import pandas as pd
 import sqlite3
 
 
-#extract data;
+def load_flight_data():
+    """ Load flight data """
+    return pd.read_csv("data/raw/flights.csv")
 
-# Load flight data
-flights= pd.read_csv("data/raw/flights.csv")
-weather=pd.read_csv("data/raw/weather.csv")
 
-# Check the first few rows
-pd.options.display.max_columns = None
-print(flights.head())
-print(weather.head())
+def load_weather_data():
+    """ Load weather data """
+    return pd.read_csv("data/raw/weather.csv")
 
-# Check column types
-weather.dtypes
-flights.shape
 
-#Transform
-#flights['FL_DATE']=pd.to_datetime(flights['FL_DATE'])
+def configure():
+    pd.options.display.max_columns = None
 
-flights["date_fl"] = pd.to_datetime(dict(year=flights["year"], month=flights["month"], day=1))
 
-flights["date_fl"] = flights["date_fl"].dt.strftime("%Y-%m-%d")
-
-flights['FL_DATE']=pd.to_datetime(flights['date_fl'])
-
-# View the result
-print(flights[["year", "month", "date_fl"]].head())
-
+def transform_flights(flights: pd.DataFrame) -> pd.DataFrame:
+    flights["date_fl"] = (
+            pd.to_datetime(dict(year=flights["year"], month=flights["month"], day=1))
+            .dt.strftime("%Y-%m-%d")
+    )
+    return flights
 
 
 #Load into SQLite
-conn=sqlite3.connect('data/processed/jfk_data.db')
-flights.to_sql('jfk_flights',conn,if_exists='replace',index=False)
-conn.close()
+def load_flights(transformed_flights: pd.DataFrame, sqlite_path: str) -> None:
 
-print("First data pipeline complete")
-
+    with sqlite3.connect(sqlite_path) as conn:
+        flights.to_sql('jfk_flights',conn,if_exists='replace',index=False)
 
 
+if __name__ == "__main__":
+    configure()
 
+    # extract
+    raw_flights = load_flight_data()
+    # print(flights.head())
 
+    raw_weather = load_weather_data()
+    # print(weather.head())
 
+    # transform
+    flights = transform_flights(raw_flights)
+    print(flights[["year", "month", "date_fl"]].head())
+
+    # load
+    load_flights(flights, "data/processed/jfk_data.db")
+    print("First data pipeline complete")
 
